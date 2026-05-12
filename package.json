@@ -1,0 +1,132 @@
+{
+  "name": "cache-memory-analyzer",
+  "displayName": "Анализатор кэша и доступа к памяти",
+  "description": "Подсветка паттернов промахов кэша и локальный анализ обращений к памяти для программ на C",
+  "version": "0.1.0",
+  "publisher": "diploma",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onLanguage:c"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "analyzer.login",
+        "title": "Анализатор: вход"
+      },
+      {
+        "command": "analyzer.logout",
+        "title": "Анализатор: выход"
+      },
+      {
+        "command": "analyzer.runAnalysis",
+        "title": "Анализатор: запустить анализ на сервере"
+      },
+      {
+        "command": "analyzer.clearDecorations",
+        "title": "Анализатор: сбросить подсветку"
+      },
+      {
+        "command": "analyzer.showReport",
+        "title": "Анализатор: показать отчёт"
+      },
+      {
+        "command": "analyzer.localAnalysis",
+        "title": "Анализатор: локальный анализ (Tree-sitter)"
+      }
+    ],
+    "configuration": {
+      "title": "Анализатор кэша и памяти",
+      "properties": {
+        "analyzer.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:8080/api/v1",
+          "description": "Базовый URL API анализа (без суффикса /analysis при необходимости уточняется клиентом)"
+        },
+        "analyzer.pollingIntervalMs": {
+          "type": "number",
+          "default": 2500,
+          "description": "Интервал опроса (мс) при ожидании результата анализа на сервере"
+        },
+        "analyzer.showInlineHints": {
+          "type": "boolean",
+          "default": true,
+          "description": "Показывать текстовые подсказки в конце строк с паттерном"
+        },
+        "analyzer.autoLocalAnalysis": {
+          "type": "boolean",
+          "default": true,
+          "description": "Автоматически запускать локальный Tree-sitter-анализ при сохранении и правках"
+        },
+        "analyzer.severityThreshold": {
+          "type": "string",
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "default": "info",
+          "description": "Минимальная серьёзность для подсветки строк (info показывает все найденные строки)"
+        }
+      }
+    },
+    "colors": [
+      {
+        "id": "analyzer.errorBackground",
+        "description": "Фон для строк с высокой долей промахов кэша",
+        "defaults": {
+          "dark": "#ff000033",
+          "light": "#ff000020"
+        }
+      },
+      {
+        "id": "analyzer.warningBackground",
+        "description": "Фон для строк со средней долей промахов кэша",
+        "defaults": {
+          "dark": "#ffaa0033",
+          "light": "#ffaa0020"
+        }
+      },
+      {
+        "id": "analyzer.infoBackground",
+        "description": "Фон для строк с предсказуемым (оптимальным) паттерном доступа",
+        "defaults": {
+          "dark": "#00ff0015",
+          "light": "#00ff0010"
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0",
+    "tree-sitter-cli": "^0.26.8",
+    "ts-loader": "^9.5.0",
+    "typescript": "^5.3.0",
+    "webpack": "^5.90.0",
+    "webpack-cli": "^5.1.0"
+  },
+  "dependencies": {
+    "copy-webpack-plugin": "^14.0.0",
+    "tree-sitter-c": "^0.24.1",
+    "web-tree-sitter": "^0.26.8"
+  }
+}
