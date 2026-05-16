@@ -41,6 +41,22 @@
       {
         "command": "analyzer.localAnalysis",
         "title": "Анализатор: локальный анализ (Tree-sitter)"
+      },
+      {
+        "command": "analyzer.selectCacheSimulatorConfig",
+        "title": "Анализатор: выбрать конфиг симулятора кэша"
+      },
+      {
+        "command": "analyzer.addCacheSimulatorConfig",
+        "title": "Анализатор: добавить конфиг симулятора (JSON)…"
+      },
+      {
+        "command": "analyzer.newSampleCacheSimulatorConfig",
+        "title": "Анализатор: создать пример конфига симулятора"
+      },
+      {
+        "command": "analyzer.forgetCacheSimulatorConfig",
+        "title": "Анализатор: сбросить сохранённый конфиг симулятора"
       }
     ],
     "configuration": {

@@ -7,7 +7,10 @@ import type {
   AnalysisMetrics,
   AnalysisResultBundle,
   AnalysisTask,
+  CacheSimulatorConfig,
 } from '../types';
+
+const STORAGE_CACHE_CONFIG_ID = 'analyzer_cache_config_id';
 
 interface AuthResponse {
   token: string;
@@ -37,6 +40,15 @@ export class ApiClient {
 
   getEmail(): string | undefined {
     return this.userEmail;
+  }
+
+  getStoredCacheSimulatorConfigId(): string | undefined {
+    const raw = this.context.globalState.get<string>(STORAGE_CACHE_CONFIG_ID)?.trim();
+    return raw ? raw : undefined;
+  }
+
+  async setStoredCacheSimulatorConfigId(id: string | undefined): Promise<void> {
+    await this.context.globalState.update(STORAGE_CACHE_CONFIG_ID, id);
   }
 
   refreshBaseUrl(): void {
@@ -250,9 +262,58 @@ export class ApiClient {
     return created.id;
   }
 
+  async listCacheSimulatorConfigs(): Promise<CacheSimulatorConfig[]> {
+    this.refreshBaseUrl();
+    const resp = await this.request<{ configs: CacheSimulatorConfig[] }>(
+      'GET',
+      '/analysis/cache-configs',
+    );
+    return Array.isArray(resp.configs) ? resp.configs : [];
+  }
+
+  /** Загружает `.json`-конфиг на сервер (как Sandbox / POST analysis/cache-configs). */
+  async uploadCacheSimulatorConfig(
+    fileBytes: Uint8Array,
+    originalFilename: string,
+    displayName?: string,
+  ): Promise<CacheSimulatorConfig> {
+    this.refreshBaseUrl();
+    const boundary = `----ExtBoundaryCfg${Date.now()}`;
+    const parts: Buffer[] = [];
+
+    if (displayName?.trim()) {
+      parts.push(Buffer.from(
+        `--${boundary}\r\n` +
+          `Content-Disposition: form-data; name="name"\r\n\r\n` +
+          `${displayName.trim()}\r\n`,
+      ));
+    }
+
+    parts.push(Buffer.from(
+      `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="${originalFilename.replace(/\"/g, '')}"\r\n` +
+        `Content-Type: application/json\r\n\r\n`,
+    ));
+    parts.push(Buffer.from(fileBytes));
+    parts.push(Buffer.from(`\r\n--${boundary}--\r\n`));
+
+    const body = Buffer.concat(parts);
+
+    const resp = await this.multipartRequest<{ config: CacheSimulatorConfig }>(
+      '/analysis/cache-configs',
+      body,
+      boundary,
+    );
+    return resp.config;
+  }
+
   /** Upload code as a .c file via multipart form to the real /analysis/upload endpoint. */
-  async submitAnalysis(code: string, fileName: string): Promise<AnalysisTask> {
+  async submitAnalysis(code: string, fileName: string, cacheSimulatorConfigId: string): Promise<AnalysisTask> {
     const projectId = await this.getOrCreateProject();
+    const cacheId = cacheSimulatorConfigId.trim();
+    if (!cacheId) {
+      throw new Error('Не выбран конфиг симулятора кэша (analysis/cache-configs)');
+    }
 
     const boundary = `----ExtBoundary${Date.now()}`;
     const fileBuffer = Buffer.from(code, 'utf-8');
@@ -263,6 +324,12 @@ export class ApiClient {
       `--${boundary}\r\n` +
       `Content-Disposition: form-data; name="project_id"\r\n\r\n` +
       `${projectId}\r\n`,
+    ));
+
+    parts.push(Buffer.from(
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="cache_config_id"\r\n\r\n` +
+      `${cacheId}\r\n`,
     ));
 
     parts.push(Buffer.from(

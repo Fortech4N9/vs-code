@@ -114,3 +114,19 @@ export interface AnalysisResultBundle {
   metrics: AnalysisMetrics | null;
   patterns: AggregatedPattern[];
 }
+
+/** Совпадает с analysis-api CacheSimulatorConfig; для UI расширения. */
+export interface CacheSimulatorConfig {
+  id: string;
+  user_id: string;
+  display_name: string;
+  original_filename: string;
+  s3_path: string;
+  size_bytes: number;
+  created_at: string;
+}
+
+/** Стандартный пример конфига симулятора: валидный JSON, см. загрузку в web Sandbox. */
+export const CACHE_SIMULATOR_SAMPLE_JSON =
+  '{\n  "schema_version": 1,\n  "_comment": "Заготовка под интеграцию cache-analysis-worker"\n}\n';
+
