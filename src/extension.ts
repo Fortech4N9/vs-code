@@ -353,16 +353,27 @@ export function activate(context: vscode.ExtensionContext): void {
     codeLensProvider.setResults([]);
   }
 
-  function buildSummaryEntry(metrics: AnalysisMetrics): AnalysisEntry[] {
-    if (metrics.total_memory_accesses === 0) return [];
+  function primaryCacheLevel(metrics: AnalysisMetrics) {
+    return metrics.levels.find((level) => level.cache_level === 'L1') ?? metrics.levels[0];
+  }
 
-    const hitPct = (metrics.hit_rate * 100).toFixed(1);
-    const missPct = (metrics.miss_rate * 100).toFixed(1);
-    const score = metrics.optimization_score.toFixed(1);
-    const totalAccesses = metrics.total_memory_accesses.toLocaleString();
+  function formatMetricsSummary(metrics: AnalysisMetrics): string {
+    return metrics.levels
+      .map(
+        (level) =>
+          `${level.cache_level}: hit ${(level.hit_rate * 100).toFixed(1)}%, score ${level.optimization_score.toFixed(1)}`,
+      )
+      .join('; ');
+  }
+
+  function buildSummaryEntry(metrics: AnalysisMetrics): AnalysisEntry[] {
+    if (metrics.levels.length === 0) return [];
+
+    const primary = primaryCacheLevel(metrics);
+    const totalAccesses = primary.total_memory_accesses.toLocaleString();
 
     const severity: 'info' | 'warning' | 'error' =
-      metrics.miss_rate > 0.5 ? 'error' : metrics.miss_rate > 0.2 ? 'warning' : 'info';
+      primary.miss_rate > 0.5 ? 'error' : primary.miss_rate > 0.2 ? 'warning' : 'info';
 
     return [
       {
@@ -375,16 +386,16 @@ export function activate(context: vscode.ExtensionContext): void {
         pattern_type: 'unit_stride',
         stride: 0,
         element_size: 0,
-        fill_factor: metrics.hit_rate,
-        access_count: metrics.total_memory_accesses,
-        hit_count: metrics.cache_hits,
-        miss_count: metrics.cache_misses,
-        miss_rate: metrics.miss_rate,
-        cache_line_utilization: metrics.hit_rate,
+        fill_factor: primary.hit_rate,
+        access_count: primary.total_memory_accesses,
+        hit_count: primary.cache_hits,
+        miss_count: primary.cache_misses,
+        miss_rate: primary.miss_rate,
+        cache_line_utilization: primary.hit_rate,
         loop_depth: 0,
         function_name: 'file',
         severity,
-        suggestion: `Попадания: ${hitPct}% | Промахи: ${missPct}% | Оценка: ${score} | Обращений: ${totalAccesses}`,
+        suggestion: `${formatMetricsSummary(metrics)} | L1 обращений: ${totalAccesses}`,
       },
     ];
   }
@@ -478,9 +489,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
           const metrics = bundle.metrics;
           const patternsCount = bundle.patterns.length;
-          const summary = metrics
-            ? `Попадания: ${(metrics.hit_rate * 100).toFixed(1)}%, промахи: ${(metrics.miss_rate * 100).toFixed(1)}%, оценка: ${metrics.optimization_score.toFixed(1)}`
-            : 'Метрик кэша нет';
+          const summary = metrics ? formatMetricsSummary(metrics) : 'Метрик кэша нет';
           const reuseHint = bundle.task.reused_from_task_id
             ? ` (переиспользовано из ${bundle.task.reused_from_task_id.slice(0, 8)})`
             : '';

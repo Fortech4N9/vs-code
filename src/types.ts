@@ -61,6 +61,11 @@ export interface AnalysisTask {
 export interface AnalysisMetrics {
   task_id: string;
   status: string;
+  levels: CacheLevelMetrics[];
+}
+
+export interface CacheLevelMetrics {
+  cache_level: string;
   total_memory_accesses: number;
   cache_hits: number;
   cache_misses: number;

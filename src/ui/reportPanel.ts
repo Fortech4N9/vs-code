@@ -76,12 +76,7 @@ export class ReportPanel {
   }
 
   private getMetricsHtml(m: AnalysisMetrics): string {
-    const hitPct = (m.hit_rate * 100).toFixed(1);
-    const missPct = (m.miss_rate * 100).toFixed(1);
-    const missColor = m.miss_rate > 0.5 ? '#f44336' : m.miss_rate > 0.2 ? '#ff9800' : '#4caf50';
-    const hitColor = m.hit_rate > 0.7 ? '#4caf50' : m.hit_rate > 0.4 ? '#ff9800' : '#f44336';
-    const scoreColor = m.optimization_score > 70 ? '#4caf50' : m.optimization_score > 40 ? '#ff9800' : '#f44336';
-
+    const levelsBlock = this.renderCacheLevelsTable(m.levels);
     return /* html */ `<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -90,39 +85,8 @@ export class ReportPanel {
 </head>
 <body>
   <h2>📊 Отчёт анализа кэша</h2>
-
-  <div class="grid">
-    <div class="card">
-      <div class="card-label">Доля попаданий</div>
-      <div class="card-value" style="color:${hitColor}">${hitPct}%</div>
-    </div>
-    <div class="card">
-      <div class="card-label">Доля промахов</div>
-      <div class="card-value" style="color:${missColor}">${missPct}%</div>
-    </div>
-    <div class="card">
-      <div class="card-label">Оценка оптимизации</div>
-      <div class="card-value" style="color:${scoreColor}">${m.optimization_score.toFixed(1)}</div>
-    </div>
-    <div class="card">
-      <div class="card-label">Обращений к памяти</div>
-      <div class="card-value" style="color:#fff">${m.total_memory_accesses.toLocaleString()}</div>
-    </div>
-  </div>
-
-  <div class="gauge">
-    <div class="gauge-label"><span>Попадания</span><span>${hitPct}%</span></div>
-    <div class="gauge-track"><div class="gauge-fill" style="width:${hitPct}%;background:${hitColor}"></div></div>
-  </div>
-  <div class="gauge" style="margin-top:12px">
-    <div class="gauge-label"><span>Промахи</span><span>${missPct}%</span></div>
-    <div class="gauge-track"><div class="gauge-fill" style="width:${missPct}%;background:${missColor}"></div></div>
-  </div>
-
+  ${levelsBlock || '<p class="empty">Метрики кэша недоступны</p>'}
   <div class="section">
-    <div class="info-row"><span class="info-label">Попадания</span><span class="info-value" style="color:#4caf50">${m.cache_hits.toLocaleString()}</span></div>
-    <div class="info-row"><span class="info-label">Промахи</span><span class="info-value" style="color:#f44336">${m.cache_misses.toLocaleString()}</span></div>
-    <div class="info-row"><span class="info-label">Всего обращений</span><span class="info-value">${m.total_memory_accesses.toLocaleString()}</span></div>
     <div class="info-row"><span class="info-label">ID задачи</span><span class="info-value" style="font-size:11px;opacity:0.6">${m.task_id}</span></div>
     <div class="info-row"><span class="info-label">Статус</span><span class="info-value">${escapeHtml(taskStatusLabelRu(String(m.status)))}</span></div>
   </div>
@@ -190,41 +154,47 @@ export class ReportPanel {
       </div>`;
   }
 
-  private renderMetricsCards(m: AnalysisMetrics): string {
-    const hitPct = (m.hit_rate * 100).toFixed(1);
-    const missPct = (m.miss_rate * 100).toFixed(1);
-    const missColor = m.miss_rate > 0.5 ? '#f44336' : m.miss_rate > 0.2 ? '#ff9800' : '#4caf50';
-    const hitColor = m.hit_rate > 0.7 ? '#4caf50' : m.hit_rate > 0.4 ? '#ff9800' : '#f44336';
-    const scoreColor = m.optimization_score > 70 ? '#4caf50' : m.optimization_score > 40 ? '#ff9800' : '#f44336';
+  private renderCacheLevelsTable(levels: AnalysisMetrics['levels']): string {
+    if (!levels?.length) {
+      return '';
+    }
+    const rows = levels
+      .map((level) => {
+        const hitPct = (level.hit_rate * 100).toFixed(1);
+        const hitColor = level.hit_rate > 0.7 ? '#4caf50' : level.hit_rate > 0.4 ? '#ff9800' : '#f44336';
+        return `
+          <tr>
+            <td>${escapeHtml(level.cache_level)}</td>
+            <td class="num">${level.total_memory_accesses.toLocaleString()}</td>
+            <td class="num" style="color:#4caf50">${level.cache_hits.toLocaleString()}</td>
+            <td class="num" style="color:#f44336">${level.cache_misses.toLocaleString()}</td>
+            <td class="num" style="color:${hitColor}">${hitPct}%</td>
+            <td class="num">${level.optimization_score.toFixed(1)}</td>
+          </tr>`;
+      })
+      .join('');
 
     return `
-      <div class="grid">
-        <div class="card">
-          <div class="card-label">Доля попаданий</div>
-          <div class="card-value" style="color:${hitColor}">${hitPct}%</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Доля промахов</div>
-          <div class="card-value" style="color:${missColor}">${missPct}%</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Оценка оптимизации</div>
-          <div class="card-value" style="color:${scoreColor}">${m.optimization_score.toFixed(1)}</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Всего обращений</div>
-          <div class="card-value" style="color:#fff">${m.total_memory_accesses.toLocaleString()}</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Попадания в кэш</div>
-          <div class="card-value" style="color:#4caf50">${m.cache_hits.toLocaleString()}</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Промахи</div>
-          <div class="card-value" style="color:#f44336">${m.cache_misses.toLocaleString()}</div>
-        </div>
-      </div>
-    `;
+      <div class="section">
+        <h3>Метрики по уровням кэша</h3>
+        <table class="levels-table">
+          <thead>
+            <tr>
+              <th>Уровень</th>
+              <th>Обращений</th>
+              <th>Попадания</th>
+              <th>Промахи</th>
+              <th>Hit %</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  private renderMetricsCards(m: AnalysisMetrics): string {
+    return this.renderCacheLevelsTable(m.levels);
   }
 
   private renderPatternDistribution(patterns: AggregatedPattern[]): string {
@@ -327,6 +297,11 @@ export class ReportPanel {
     return `
       <div class="section">
         <h3>Паттерны (${patterns.length})</h3>
+        <p class="pattern-hint">
+          Промахи — суммарно по массиву (<code>base_symbol</code>) за всю симуляцию, не по одной строке кода.
+          Строки с одним массивом дублируют одно значение; не суммируйте по таблице.
+          Сводные hit/miss по L1/L2 — в блоке метрик по уровням кэша.
+        </p>
         <div class="table-wrap">
           <table>
             <thead>
@@ -341,7 +316,7 @@ export class ReportPanel {
                 <th>Глуб.</th>
                 <th>Заполн.</th>
                 <th>Кэш</th>
-                <th>Промахи</th>
+                <th>Промахи Σ массива</th>
                 <th>Чт./зап.</th>
                 <th>РБ</th>
                 <th>З/З</th>
@@ -470,6 +445,8 @@ const BASE_STYLES = `
   .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #2a2a2a; font-size: 13px; }
   .info-label { color: #888; }
   .info-value { color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pattern-hint { margin: 0 0 10px; font-size: 11px; line-height: 1.45; color: #888; }
+  .pattern-hint code { font-size: 10px; }
 `;
 
 const SERVER_STYLES = `
@@ -493,6 +470,10 @@ const SERVER_STYLES = `
   .level-l2 { background: #3a2050; color: #b388ff; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
   td.small { font-size: 11px; color: #aaa; }
+  .levels-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .levels-table th, .levels-table td { padding: 6px 8px; border-bottom: 1px solid #2a2a2a; text-align: left; }
+  .levels-table th { color: #888; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  .levels-table td.num { text-align: right; }
 `;
 
 function escapeHtml(value: string): string {
